@@ -1,10 +1,8 @@
-const mongoose = require("mongoose");
-const { ServerApiVersion } = require("mongodb");
-const configs = require("./index");
+const mongoose = require('mongoose');
+const { ServerApiVersion } = require('mongodb');
+const { MONGO_URI } = require('./');
 
 module.exports = async () => {
-	const MONGO_URI = configs.MONGO_URI;
-
 	try {
 		const connect = await mongoose.connect(MONGO_URI, {
 			serverApi: {
