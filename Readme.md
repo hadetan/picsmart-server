@@ -1,4 +1,4 @@
-# PicsMart Project Notes
+# PicsMart Project Notes (BackEnd)
 
 ## Installation
 
@@ -177,3 +177,99 @@ try {
 ```
 
 What this controller will do is, it will check if the access token as expired or not, if its expired then it will generate new access token and return it to the frontend. The frontend will silently call this `refreshAccessTokenController` everytime the access token has expired. The access token will be saved inside local storage in frontend, and refresh token will be saved in cookie using a very secure package `httpOnly`, the httpOnly can never be accessed through JavaScript, that is why we are saving access token inside local storage so we can know when its getting expired.
+
+### Cookie Parser
+
+`cookie-parser` is a package that helps us to send some things inside HTTP header cookies. The `cookie-parser` extracts the cookie data from the HTTP request and converts it into a usable format that can be accessed by the server-side code. It parses the cookie data to extract individual values such as the cookie name, value and expiration date.
+
+Lets install this package -
+
+```bash
+npm i cookie-parser
+```
+
+This package is used as a middleware, and to use it, we can follow the code example -
+
+```javascript
+//route index.js
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+```
+
+Before, we were sending refresh token in our response of login controller, now we will not send it like that. We will now send it like this -
+
+```javascript
+//auth.controller.js loginController
+//We will send the refresh token inside res.cookie(), and it takes these in arguments
+res.cookie(name, value, {
+    options: options
+});
+
+//To use it -
+res.cookie('jwt', refreshToken, {
+    httpOnly: true,
+    secure: true,
+});
+```
+
+After setting the `httpOnly: true` mark, this cookie will not be accessible by frontend, it can only be accessed through HTTP request only. By doing this the security of our authentication increases drastically. The `secure: true` will make it accessible for HTTPS, it will be helpful when the server will be hosted and will turn from HTTP to HTTPS.
+
+### Utils
+
+Currently if you see, our response is recieved as a plain object. But now we will not send it like that, we will send the status codes and error messages and results inside the object as response. Why do we need to do it? Because frontend cannot know if the error occured because of server or from the connectivity. So we will send it as I mentioned so that we can handle errors in frontend in better way.
+
+Lets create a folder called `utils` inside `src`. Inside this folder create `responseWrapper.js` file, and follow the code -
+
+```javascript
+//We will map our response using these two functions
+const success = (statusCode, result) => {
+    return {
+        status: 'ok',
+        statusCode,
+        result,
+    };
+};
+
+const error = (statusCode, message) => {
+    return {
+        status: 'error',
+        statusCode,
+        message,
+};
+};
+
+module.exports = {
+    success,
+    error,
+};
+```
+
+Till now we were sending response like `res.status(statusCode).send('error message')`, but now we will send the response like this - `res.send(error(statusCode, 'error message'));`
+
+Now we can move to frontend part.
+
+### CORS
+
+CORS (Cross Origin Resource Sharing) is a package that allows two different http's to talk with each other, else the browser does not allow it to happen. We will have to specify that `this` is our frontend URL to whom we want to listen and talk to. Else when we will hit our backend API's from frontend, it will be blocked by CORS policy. To prevent this blockage we will use this package called CORS.
+
+To install -
+
+```bash
+npm i cors
+```
+
+As I said, we will have to specify that `this` is going to be our URL and allow it to talk with our backend API's, if we do not specify it, for example when we just do this -
+
+```javascript
+//Root index.js
+app.use(cors());
+```
+
+Then this method is going to allow anyone and everyone to access our backend, which is not okay at all. That is why we will have to specify only our trusted URL for allowing.
+
+```javascript
+//Root index.js
+app.use(cors({
+    origin: 'http://example.com' //Our frontend URL
+}))
+```
