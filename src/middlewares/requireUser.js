@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
+const { error } = require('../utils/responseWrapper');
 const { ACCESS_TOKEN_PRIVATE_KEY } = require('../configs');
-const { error, success } = require('../utils/responseWrapper');
 
 module.exports = async (req, res, next) => {
 	// console.log('this is a middleware');

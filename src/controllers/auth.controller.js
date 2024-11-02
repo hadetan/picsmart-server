@@ -18,12 +18,12 @@ const signupController = async (req, res) => {
 
 		if (!name) {
 			// return res.status(400).send('name is required');
-			return res.send(error(400, 'Name is requred'));
+			return res.send(error(400, 'Name is required'));
 		}
 
 		if (!email) {
 			// return res.status(400).send('Email is required');
-			return res.send(error(400, 'Email is requred'));
+			return res.send(error(400, 'Email is required'));
 		}
 
 		if (!password) {
@@ -39,7 +39,7 @@ const signupController = async (req, res) => {
 			return res.send(error(409, 'User is already registered'));
 		}
 
-		//Now we can save this user in our db, but we do not save a user as I have shown before. We will encrypt the password befoere saving.
+		//Now we can save this user in our db, but we do not save a user as I have shown before. We will encrypt the password before saving.
 		//The hashing process is an async process thats why we will await it.
 		const hashedPassword = await bcrypt.hash(password, 10);
 		//After giving value `password`, I have given a salt value, it means how many rounds does it have to go through while encrypting the password.
@@ -50,6 +50,8 @@ const signupController = async (req, res) => {
 			email,
 			password: hashedPassword,
 		});
+
+		// const newUser = await User.findById(user._id);
 
 		const accessToken = generateAccessToken({
 			_id: user._id,
@@ -68,9 +70,10 @@ const signupController = async (req, res) => {
 		// 	user,
 		// });
 
-		return res.json(success(201, {accessToken: accessToken}));
+		return res.json(success(201, { accessToken: accessToken, user }));
 	} catch (err) {
-		console.log(err);
+		// console.log(err);
+		return res.send(error(500, err.message));
 	}
 };
 
@@ -94,7 +97,7 @@ const loginController = async (req, res) => {
 		}
 
 		//Checking if user already exists in our database.
-		const user = await User.findOne({ email });
+		const user = await User.findOne({ email }).select('+password');
 
 		if (!user) {
 			// return res.status(404).send('User is not registered');
@@ -126,9 +129,23 @@ const loginController = async (req, res) => {
 		// 	accessToken: accessToken,
 		// });
 
-		return res.json(success(200, {accessToken: accessToken}));
+		return res.json(success(200, { accessToken: accessToken, user }));
 	} catch (err) {
-		console.log(err);
+		// console.log(err);
+		return res.send(error(500, err.message));
+	}
+};
+
+const logoutController = async (req, res) => {
+	try {
+		res.clearCookie('jwt', {
+			httpOnly: true,
+			secure: true,
+		});
+
+		return res.send(success(200, 'User logged out'));
+	} catch (err) {
+		return res.send(error(500, err.message));
 	}
 };
 
@@ -157,7 +174,7 @@ const refreshAccessTokenController = async (req, res) => {
 
 		return res.json(success(201, { accessToken: newAccessToken }));
 	} catch (err) {
-		console.log(err);
+		// console.log(err);
 		// return res.status(401).send('Invalid refresh token');
 		return res.send(401, 'Invalid refresh token');
 	}
@@ -168,13 +185,14 @@ const generateAccessToken = (data) => {
 	try {
 		//This jwt.sign function asks us two arguments, one the data we want to encrypt and other the secret key which only you will know/any random string.
 		const accessToken = jwt.sign(data, ACCESS_TOKEN_PRIVATE_KEY, {
-			expiresIn: '15m',
+			expiresIn: '1d',
 		});
 		//Let's see what this token is returning actually.
 		console.log(accessToken);
 		return accessToken;
 	} catch (err) {
-		console.log(err);
+		// console.log(err);
+		return res.send(error(500, err.message));
 	}
 };
 
@@ -185,7 +203,8 @@ const generateRefreshToken = (data) => {
 		});
 		return refreshToken;
 	} catch (err) {
-		console.log(err);
+		// console.log(err);
+		return res.send(error(500, err.message));
 	}
 };
 
@@ -193,4 +212,5 @@ module.exports = {
 	loginController,
 	signupController,
 	refreshAccessTokenController,
+	logoutController,
 };
