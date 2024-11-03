@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 	// 	serverStatus: 'Working at full capacity',
 	// });
 
-	res.json(success(200, 'Wokring at full capacity!'));
+	res.json(success(200, 'Working at full capacity!'));
 });
 
 //Starting the server

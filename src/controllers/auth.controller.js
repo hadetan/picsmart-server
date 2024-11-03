@@ -188,7 +188,6 @@ const generateAccessToken = (data) => {
 			expiresIn: '1d',
 		});
 		//Let's see what this token is returning actually.
-		console.log(accessToken);
 		return accessToken;
 	} catch (err) {
 		// console.log(err);

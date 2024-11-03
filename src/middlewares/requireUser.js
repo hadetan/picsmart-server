@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { error } = require('../utils/responseWrapper');
 const { ACCESS_TOKEN_PRIVATE_KEY } = require('../configs');
+const User = require('../models/User');
 
 module.exports = async (req, res, next) => {
 	// console.log('this is a middleware');
@@ -31,6 +32,13 @@ module.exports = async (req, res, next) => {
 		const decoded = jwt.verify(accessToken, ACCESS_TOKEN_PRIVATE_KEY);
 		//Let's send the users id through our request, this id will be useful later
 		req._id = decoded._id;
+
+		const user = await User.findById(req._id);
+
+		if (!user) {
+			return res.send(error(404, 'User not found'));
+		}
+
 		next();
 	} catch (err) {
 		console.log(err);

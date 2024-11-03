@@ -9,7 +9,7 @@ const userSchema = mongoose.Schema(
 		email: {
 			type: String,
 			required: true,
-			lowercase: true, //automatically lower cases the capital latters
+			lowercase: true, //automatically lower cases the capital letters
 		},
 		password: {
 			type: String,
@@ -17,7 +17,7 @@ const userSchema = mongoose.Schema(
 			select: false,
 		},
 		avatar: {
-			//This is for profile picture of the user. We will use cloudinary for images and it will make more sense when we will impliment file uploading feature on frontend.
+			//This is for profile picture of the user. We will use cloudinary for images and it will make more sense when we will implement file uploading feature on frontend.
 			publicId: String,
 			url: String,
 		},

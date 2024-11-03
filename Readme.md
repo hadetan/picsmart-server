@@ -574,3 +574,143 @@ const deletePostController = async (req, res) => {
     }
 };
 ```
+
+***Creating get my own post feature***
+
+We will use the `find()` method and inside we will use `$in` comparison with our own current users id to find all of the posts that we have created.
+
+```javascript
+const getMyPostController = async (req, res) => {
+    try {
+        const curUserId = req._id;
+
+        const allUserPosts = await Post.find({
+            owner: {
+                $in: curUserId,
+            },
+        });
+
+        return res.send(success(200, { allUserPosts }));
+    } catch (err) {
+        return res.send(error(500, err.message));
+    }
+};
+```
+
+When we fetch all of the posts of ours, we can not see who liked it, mongoDB can tell who it was depending on the user id, but we can not tell. So for that we can populate the likes with all of the required data we want.
+
+For that we have a function called `populate(#name of the field inside of the schema that we want to populate)`, and we can use it like this -
+
+```javascript
+const allUserPosts = await Post.find({
+    owner: {
+        $in: curUserId,
+    },
+}).populate('likes');
+```
+
+Previously it was only giving us the id of the user who liked it, but now it will return us the whole user inside of the likes array.
+
+***Creating get Users posts feature***
+
+We can get the users post that we want to see using their user id, using that user id we can find all of the posts of that particular user like this -
+
+```javascript
+const getUserPostController = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.send(error(400, 'User id is required'));
+        }
+
+        const allUserPost = await Post.find({
+            owner: {
+                $in: userId,
+            },
+        }).populate('likes');
+
+        return res.send(success(200, { allUserPost }));
+    } catch (err) {
+        return res.send(error(500, err.message));
+    }
+};
+```
+
+***Creating delete my own profile***
+
+In order to delete a profile we cannot just delete the user and move on, because there could be posts that the user may have, we will have to delete it, the user may be following others, so we will have to delete the user from their followers list, the user might have liked others posts, so we will have to delete that as well from their posts likes array. There can be more process inside of the delete user feature depending on what other features you are providing to the user for example if they have comments feature then you will have to delete their comments from all of the posts they have commented in and so on. Finally we will have to delete the cookie from the user because now having the cookie makes no sense since the user has deleted their whole account.
+
+```javascript
+const deleteMyProfileController = async (req, res) => {
+    try {
+        const curUserId = req._id;
+
+        const curUser = await User.findById(curUserId);
+
+        // Delete all posts
+        await Post.deleteMany({
+            owner: curUserId,
+        });
+
+        // Go to this users followers and delete the user from their followings list
+        curUser.followers.forEach(async (followerId) => {
+            const follower = await User.findById(followerId);
+            const index = follower.followings.indexOf(curUserId);
+            follower.followings.splice(index, 1);
+            await follower.save();
+        });
+
+        // Go to this users followings and delete the user from their followers list
+        curUser.followings.forEach(async (followingId) => {
+            const following = await User.findById(followingId);
+            const index = following.followers.indexOf(curUserId);
+            following.followers.splice(index, 1);
+            await following.save();
+        });
+
+        // Remove myself from all of the posts I have liked
+        const allPosts = await Post.find();
+        allPosts.forEach(async (post) => {
+            const index = post.likes.indexOf(curUserId);
+            post.likes.splice(index, 1);
+            await post.save();
+        });
+
+        // Deleting my account now
+        await curUser.deleteOne();
+
+        res.clearCookie('jwt', {
+            httpOnly: true,
+            secure: true,
+        });
+
+        return res.send(success(200, 'User deleted successfully'));
+    } catch (err) {
+        return res.send(error(500, err.message));
+    }
+};
+```
+
+***Updating the requireUser.js middleware***
+
+We can add the functionality that if the user is not present then throw the error that user not found like this -
+
+```javascript
+try {
+    const decoded = jwt.verify(accessToken, ACCESS_TOKEN_PRIVATE_KEY);
+    req._id = decoded._id;
+
+    const user = await User.findById(req._id);
+
+    // Updated the middleware with this if condition
+    if (!user) {
+        return res.send(error(404, 'User not found'));
+    }
+
+    next();
+} catch (err) {
+    console.log(err);
+    return res.send(error(401, 'Invalid access key'));
+}
+```

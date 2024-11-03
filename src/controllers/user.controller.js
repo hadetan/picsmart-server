@@ -66,7 +66,7 @@ const followOrUnfollowController = async (req, res) => {
 	}
 };
 
-const getPostsOfFollowing = async (req, res) => {
+const getPostsOfFollowingController = async (req, res) => {
 	try {
 		const curUserId = req._id;
 
@@ -86,7 +86,95 @@ const getPostsOfFollowing = async (req, res) => {
 	}
 };
 
+const getMyPostController = async (req, res) => {
+	try {
+		const curUserId = req._id;
+
+		const allUserPosts = await Post.find({
+			owner: {
+				$in: curUserId,
+			},
+		}).populate('likes');
+
+		return res.send(success(200, { allUserPosts }));
+	} catch (err) {
+		return res.send(error(500, err.message));
+	}
+};
+
+const getUserPostController = async (req, res) => {
+	try {
+		const { userId } = req.body;
+
+		if (!userId) {
+			return res.send(error(400, 'User id is required'));
+		}
+
+		const allUserPost = await Post.find({
+			owner: {
+				$in: userId,
+			},
+		}).populate('likes');
+
+		return res.send(success(200, { allUserPost }));
+	} catch (err) {
+		return res.send(error(500, err.message));
+	}
+};
+
+const deleteMyProfileController = async (req, res) => {
+	try {
+		const curUserId = req._id;
+
+		const curUser = await User.findById(curUserId);
+
+		// Delete all posts
+		await Post.deleteMany({
+			owner: curUserId,
+		});
+
+		// Go to this users followers and delete the user from their followings list
+		curUser.followers.forEach(async (followerId) => {
+			const follower = await User.findById(followerId);
+			const index = follower.followings.indexOf(curUserId);
+			follower.followings.splice(index, 1);
+			await follower.save();
+		});
+
+		// Go to this users followings and delete the user from their followers list
+		curUser.followings.forEach(async (followingId) => {
+			const following = await User.findById(followingId);
+			const index = following.followers.indexOf(curUserId);
+			following.followers.splice(index, 1);
+			await following.save();
+		});
+
+		// Remove myself from all of the posts I have liked
+		const allPosts = await Post.find();
+		allPosts.forEach(async (post) => {
+			const index = post.likes.indexOf(curUserId);
+			post.likes.splice(index, 1);
+			await post.save();
+		});
+
+		// Deleting my account now
+		await curUser.deleteOne();
+
+		res.clearCookie('jwt', {
+			httpOnly: true,
+			secure: true,
+		});
+
+		return res.send(success(200, 'User deleted successfully'));
+	} catch (err) {
+		return res.send(error(500, err.message));
+	}
+};
+
 module.exports = {
 	followOrUnfollowController,
-	getPostsOfFollowing,
+	getPostsOfFollowingController,
+	getMyPostController,
+	getUserPostController,
+	deleteMyProfileController,
 };
